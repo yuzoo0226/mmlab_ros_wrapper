@@ -1,0 +1,33 @@
+{
+    "version": "1.2.0",
+    "codebase": {
+        "task": "VideoRecognition",
+        "codebase": "mmaction",
+        "version": "1.1.0",
+        "pth": "vit-base-p16_videomae-k400-pre_16x4x1_kinetics-400_20221013-860a3cd3.pth",
+        "config": "vit-base-p16_videomae-k400-pre_16x4x1_kinetics-400.py"
+    },
+    "codebase_config": {
+        "type": "mmaction",
+        "task": "VideoRecognition"
+    },
+    "onnx_config": {
+        "type": "onnx",
+        "export_params": true,
+        "keep_initializers_as_inputs": false,
+        "opset_version": 11,
+        "save_file": "end2end.onnx",
+        "input_names": [
+            "input"
+        ],
+        "output_names": [
+            "output"
+        ],
+        "input_shape": null,
+        "optimize": true
+    },
+    "backend_config": {
+        "type": "onnxruntime"
+    },
+    "calib_config": {}
+}

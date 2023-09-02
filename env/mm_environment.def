@@ -1,0 +1,112 @@
+Bootstrap: docker
+From: nvidia/cuda:11.7.1-devel-ubuntu20.04
+Stage: build
+
+%setup
+    ############################################
+    # setup. コンテナ外で行われるコマンド
+    ############################################
+
+%files
+    ############################################
+    # files ファイルのマウント
+    ############################################
+    ./entrypoint.sh /
+
+%environment
+    ############################################
+    # enviroments 環境変数の定義
+    ############################################
+    export TZ=Asia/Tokyo 
+    export LC_ALL=C
+
+%post
+    ############################################
+    # post ファイルのダウロードとか，色々．基本的にここに書く
+    ############################################
+    # aptでインストールする場合，入力待ちを避けるために下記のように書く
+    # DEBIAN_FRONTEND=noninteractive && apt install -y hogehoge ...
+
+    # essential  
+    apt update
+    DEBIAN_FRONTEND=noninteractive apt install -y lsb-release wget curl git nano gnupg build-essential software-properties-common
+    mkdir -p /run/user/1000
+    mkdir -p /var/lib/dbus
+    
+    # avoid freezing
+    DEBIAN_FRONTEND=noninteractive apt install -y tzdata keyboard-configuration
+
+    ##################################
+    # ROS noetic
+    #################################
+    # apt update
+    # DEBIAN_FRONTEND=noninteractive apt install -y ros-noetic-desktop-full
+    # DEBIAN_FRONTEND=noninteractive apt install -y python3-rosdep python3-rosinstall python3-vcstools python3-catkin-tools
+
+    # # python setup
+    # ln -sf /usr/bin/python3 /usr/bin/python
+    # curl -kL https://bootstrap.pypa.io/pip/get-pip.py | python
+
+    # # set entrypoint.sh
+    # echo source /opt/ros/noetic/setup.bash >> /entrypoint.sh
+
+    ##################################
+    # install python3-pip
+    ##################################
+    DEBIAN_FRONTEND=noninteractive apt install -y python3-pip
+
+    ##################################
+    # install mm pkgs
+    ##################################
+    pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
+    pip install mmcv==2.0.1
+
+    # optional
+    pip install mmdet==3.1.0
+    pip install mmpose==1.1.0
+
+    git clone https://github.com/open-mmlab/mmaction2.git
+    cd mmaction2
+    pip install .
+    cd ../
+
+    git clone https://github.com/open-mmlab/mmdeploy.git
+    cd mmdeploy
+    pip install .
+
+    pip install mmengine==0.8.4
+    pip install onnx==1.14.1
+    pip install onnxruntime==1.15.1
+    pip install onnxruntime-gpu==1.15.1
+    pip install moviepy==1.0.3
+
+    # finalize
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    ############################################
+    # runscript. singularity run で実行するコマンド
+    ############################################
+
+%startscript
+    ############################################
+    # startscript. singularity insntance startで実行するコマンド 
+    ############################################
+
+%test
+    ############################################
+    # test. テスト時に実行するコマンド
+    ############################################
+
+
+%labels
+    ############################################
+    # label. ラベル
+    ############################################
+    Author Yuga Yano
+    Version v0.0.1
+
+%help
+    ############################################
+    # help. ヘルプ
+    ############################################

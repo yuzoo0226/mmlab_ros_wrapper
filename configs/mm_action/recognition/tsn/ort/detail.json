@@ -1,0 +1,33 @@
+{
+    "version": "1.2.0",
+    "codebase": {
+        "task": "VideoRecognition",
+        "codebase": "mmaction",
+        "version": "1.1.0",
+        "pth": "tsn_imagenet-pretrained-r50_8xb32-1x1x3-100e_kinetics400-rgb_20220906-cd10898e.pth",
+        "config": "tsn_imagenet-pretrained-r50_8xb32-1x1x3-100e_kinetics400-rgb.py"
+    },
+    "codebase_config": {
+        "type": "mmaction",
+        "task": "VideoRecognition"
+    },
+    "onnx_config": {
+        "type": "onnx",
+        "export_params": true,
+        "keep_initializers_as_inputs": false,
+        "opset_version": 11,
+        "save_file": "end2end.onnx",
+        "input_names": [
+            "input"
+        ],
+        "output_names": [
+            "output"
+        ],
+        "input_shape": null,
+        "optimize": true
+    },
+    "backend_config": {
+        "type": "onnxruntime"
+    },
+    "calib_config": {}
+}
