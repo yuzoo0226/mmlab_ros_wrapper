@@ -1,0 +1,12 @@
+<launch>    
+
+    <include file="$(find openni2_launch)/launch/openni2.launch"/>
+
+
+    <node pkg="mmlab_ros_wrapper" type="mmaction_spatio_det_onnx.py" name="action_recognition_server" output="screen">
+        <!-- <param name="/sampling_rate" type="int" value="$(arg sampling_rate)"/> -->
+    </node>
+    
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mmlab_ros_wrapper)/configs/rviz/xtion_test.rviz"/>
+
+</launch>
