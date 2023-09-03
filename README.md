@@ -12,7 +12,7 @@ git clone --recursive git.mm_pkg
 
 ```bash
 cd mm_ws/env/
-singularity build --sandbox --fakeroot sandbox_mm mm_environment.def
+singularity build --sandbox --fakeroot --nv sandbox_mm mm_environment.def
 ```
 
 - singularity shell
@@ -52,7 +52,7 @@ mim download mmaction2 --config vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-a
   - detectionのdeplpoymentは，mmdeployではなく`mmaction2`内のdeploymentから実行する必要がある
 
 ```bash
-python3 tools/deployment/export_onnx_stdet.py vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb_20230314-3dafab75.pth --num_frames 16 --shape 480 640 --output_file videomae.onnx
+python3 tools/deployment/export_onnx_stdet.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb_20230314-3dafab75.pth --num_frames 16 --output_file videomae.onnx
 ```
 
 - 推論
@@ -121,7 +121,7 @@ tests/data/arm_wrestling.mp4 \
 --dump-info
 ```
 
-## 推論
+- 推論
 
 - not work
 
