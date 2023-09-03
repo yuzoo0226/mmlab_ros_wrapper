@@ -150,3 +150,32 @@ tests/data/arm_wrestling.mp4 \
 python3 demo/demo_spatiotemporal_det_onnx.py demo/demo.mp4 demo/demo_spatiotemporal_det.mp4 --config ../mmdeploy/vit-base-p16_videomae-k400-pre_16x4x1_kinetics-400.py --onnx-file ../mmdeploy/mmdeploy_models/mmaction/videomae/ort/end2end.onnx --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py --det-checkpoint http://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_2x_coco/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth --action-score-thr 0.5 --label-map tools/data/ava/label_map.txt 
 ```
 
+## デバッグ用 (for debug)
+
+### webcam test
+
+- データダウンロードのために，初回のみ実行
+
+```bash
+cd mmlab_ros_wrapper/include/mmaction2/
+cd tools/data/ava/
+sh fetch_ava_proposals.sh
+cd ../../../
+```
+
+- 実行コマンド
+  - ファイルを保存したい場合は，以下の引数を追加
+  - `--out-filename your/favorite/path.mp4`
+
+```bash
+python python demo/webcam_demo_spatiotemporal_det.py --show
+```
+
+### ROS test
+
+- support device
+  - Xtion Pro live
+
+  ```bash
+  roslaunch openni2_launch openni2.launch
+  ```

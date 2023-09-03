@@ -168,3 +168,78 @@ Traceback (most recent call last):
     '-r', '%.02f' % fps,
 TypeError: must be real number, not NoneType
 ```
+
+
+## webcam test
+
+### pyopensslに関するエラー
+
+- 解決策: pyopensslのバージョンが古い
+- 以下のコマンドで解決
+
+  ```bash
+  pip install pip --upgrade
+  pip install pyopenssl --upgrade
+  ```
+
+- エラー内容
+
+```bash
+Error in sys.excepthook:
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 72, in apport_excepthook
+    from apport.fileutils import likely_packaged, get_recent_crashes
+  File "/usr/lib/python3/dist-packages/apport/__init__.py", line 5, in <module>
+    from apport.report import Report
+  File "/usr/lib/python3/dist-packages/apport/report.py", line 32, in <module>
+    import apport.fileutils
+  File "/usr/lib/python3/dist-packages/apport/fileutils.py", line 12, in <module>
+    import os, glob, subprocess, os.path, time, pwd, sys, requests_unixsocket
+  File "/usr/lib/python3/dist-packages/requests_unixsocket/__init__.py", line 1, in <module>
+    import requests
+  File "/usr/lib/python3/dist-packages/requests/__init__.py", line 95, in <module>
+    from urllib3.contrib import pyopenssl
+  File "/usr/lib/python3/dist-packages/urllib3/contrib/pyopenssl.py", line 46, in <module>
+    import OpenSSL.SSL
+  File "/usr/lib/python3/dist-packages/OpenSSL/__init__.py", line 8, in <module>
+    from OpenSSL import crypto, SSL
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 1553, in <module>
+    class X509StoreFlags(object):
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 1573, in X509StoreFlags
+    CB_ISSUER_CHECK = _lib.X509_V_FLAG_CB_ISSUER_CHECK
+AttributeError: module 'lib' has no attribute 'X509_V_FLAG_CB_ISSUER_CHECK'
+
+```
+
+
+### pklファイルが見つからない
+
+- pklファイルをダウンロードしてくる必要がある
+  - [以下のスクリプトを実行](./include/mmaction2/tools/data/ava/fetch_ava_proposals.sh)
+
+```bash
+/usr/local/lib/python3.8/dist-packages/mmdet/apis/inference.py:90: UserWarning: dataset_meta or class names are not saved in the checkpoint's meta data, use COCO classes by default.
+  warnings.warn(
+/usr/lib/python3/dist-packages/apport/report.py:13: DeprecationWarning: the imp module is deprecated in favour of importlib; see the module's documentation for alternative uses
+  import fnmatch, glob, traceback, errno, sys, atexit, imp, stat
+Traceback (most recent call last):
+  File "demo/webcam_demo_spatiotemporal_det.py", line 865, in <module>
+    main(parse_args())
+  File "demo/webcam_demo_spatiotemporal_det.py", line 793, in main
+    stdet_predictor = StdetPredictor(
+  File "demo/webcam_demo_spatiotemporal_det.py", line 298, in __init__
+    model = init_detector(config, checkpoint, device=device)
+  File "/usr/local/lib/python3.8/dist-packages/mmdet/apis/inference.py", line 102, in init_detector
+    metainfo = DATASETS.build(test_dataset_cfg).metainfo
+  File "/usr/local/lib/python3.8/dist-packages/mmengine/registry/registry.py", line 570, in build
+    return self.build_func(cfg, *args, **kwargs, registry=self)
+  File "/usr/local/lib/python3.8/dist-packages/mmengine/registry/build_functions.py", line 121, in build_from_cfg
+    obj = obj_cls(**args)  # type: ignore
+  File "/usr/local/lib/python3.8/dist-packages/mmaction/datasets/ava_dataset.py", line 158, in __init__
+    self.proposals = load(self.proposal_file)
+  File "/usr/local/lib/python3.8/dist-packages/mmengine/fileio/io.py", line 855, in load
+    with BytesIO(file_backend.get(file)) as f:
+  File "/usr/local/lib/python3.8/dist-packages/mmengine/fileio/backends/local_backend.py", line 33, in get
+    with open(filepath, 'rb') as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'data/ava/annotations/ava_dense_proposals_val.FAIR.recall_93.9.pkl'
+```
