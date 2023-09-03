@@ -1,8 +1,9 @@
 # issues
 
 - 環境構築中に起こったバグをまとめたもの
+- Collect some issues when I try to export onnx file.
 
-## mim_downloadができない
+## mim_downloadができない(Error occured when mim download)
 
 - エラー内容
 
@@ -53,7 +54,9 @@ KeyError: 'pkg_resources'
 
 ## same device
 
-- use cuda and cpu same time
+- deploy時に，`--device cuda`を指定するとどこかにcpuを使っていますよというエラーが出る
+  - モデルの中身などどこかにcpuを使っているところがある模様，修正できませんでした．
+  - **CPUを使ってdeployしてください**
 
 ```bash
  > python3 include/mmaction2/tools/deployment/export_onnx_stdet.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb_20230314-3dafab75.pth --num_frames 16 --output_file videomae.onnx --device cuda:0
@@ -103,9 +106,13 @@ RuntimeError: Expected all tensors to be on the same device, but found at least 
 ```
 
 
-## onnx export
+## onnx export using cpu
 
-- no problem, export onnx file is complete!!
+- `pip install onnxruntime-gpu`を行ったあと，`cpu`モードでonnxファイルを出力した場合に起こるエラー
+  - onnxファイルは問題なく生成できているので，気にしなくても良い
+  - onnxファイルにエクスポートしたあと，評価のために`inference`が走ることになっているが，そこで出ているエラーである．
+- 実行時に，`['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']`をつける必要がある
+  - `session = onnxruntime.InferenceSession(args.onnx_file, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'])`
 - you add `['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']`  when your inference time
   - `session = onnxruntime.InferenceSession(args.onnx_file, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'])`
 
@@ -126,7 +133,9 @@ ValueError: This ORT build has ['TensorrtExecutionProvider', 'CUDAExecutionProvi
 
 ## inference moviepy
 
-- pip install moviepy --upgrade
+- moviepyのバージョンが古いと起きるバグ？
+- 現在は，これで解決可能
+  - `pip install moviepy --upgrade`
 
 ```bash
 Performing SpatioTemporal Action Detection for each clip

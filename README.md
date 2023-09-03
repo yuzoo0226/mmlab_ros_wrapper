@@ -30,6 +30,20 @@ python collect_env.py
 ```
 
 - [テスト時の実行環境](./test_environment.md)
+- mmcvがGPU付きでbuildされていない場合は，以下の手順で再度インストールしてください．
+  - （インストールにはかなり時間がかかります．）
+
+  ```bash
+  pip uninstall mmcv
+  pip install mmcv==1.7.1
+  ```
+
+- 必要に応じて，以下のコマンドも実行してください．
+
+  ```bash
+  pip uninstall mmcv-full
+  pip install mmcv-full==1.7.1
+  ```
 
 ## mmdeploy
 
@@ -50,6 +64,9 @@ mim download mmaction2 --config vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-a
 
 - deploy
   - detectionのdeplpoymentは，mmdeployではなく`mmaction2`内のdeploymentから実行する必要がある
+- 想定されるバグ
+  - issue1: [cpuとcudaが混在することによるエラー](./issues.md#same-device)
+  - issue2: [cpuでdeployしたときに起こるエラー](./issues.md#onnx-export-using-cpu)
 
 ```bash
 python3 tools/deployment/export_onnx_stdet.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py ./configs/mm_action/detection/video_mae/vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb_20230314-3dafab75.pth --num_frames 16 --output_file videomae.onnx
@@ -57,8 +74,12 @@ python3 tools/deployment/export_onnx_stdet.py ./configs/mm_action/detection/vide
 
 - 推論
 
+- Tips: [GPUを用いたonnxファイルの推論方法](./issues.md#onnx-export-using-cpu)
+- `demo/demo_spatiotemporal_det_onnx.py`の283行目を以下のように変更
+  - `session = onnxruntime.InferenceSession(args.onnx_file, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'])`
+
 ```bash
-python3 demo/demo_spatiotemporal_det_onnx.py demo/demo.mp4 demo/demo_spatiotemporal_det.mp4 --config ./vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py --onnx-file ./videomae.onnx --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py --det-checkpoint http://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_2x_coco/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth --action-score-thr 0.5 --label-map tools/data/ava/label_map.txt 
+python3 demo/demo_spatiotemporal_det_onnx.py demo/demo.mp4 demo/demo_spatiotemporal_det.mp4 --config ./vit-base-p16_videomae-k400-pre_8xb8-16x4x1-20e-adamw_ava-kinetics-rgb.py --onnx-file ./videomae.onnx --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py --det-checkpoint http://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_2x_coco/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth --action-score-thr 0.5 --label-map tools/data/ava/label_map.txt --device cuda
 ```
 
 - onnx関連でエラーが出た場合
