@@ -492,6 +492,7 @@ class MmActionDetector():
         ############################################
         self.img_width = 640
         self.img_height = 480
+        self.img_topic_hz = 30
 
         ############################################
         # MMAction2固有のパラメータ
@@ -682,6 +683,36 @@ class MmActionDetector():
 
         return frame
 
+    def draw_all_images(self, frames, bboxes, preds):
+        """Draw predictions on one image."""
+        results = []
+        for frame in frames:
+            for bbox, pred in zip(bboxes, preds):
+                # draw bbox
+                box = bbox.astype(np.int64)
+                st, ed = tuple(box[:2]), tuple(box[2:])
+                cv2.rectangle(frame, st, ed, (0, 0, 255), 2)
+
+                # draw texts
+                for k, (label, score) in enumerate(pred):
+                    if k >= self.max_labels_per_bbox:
+                        break
+                    text = f'{self.abbrev(label)}: {score:.4f}'
+                    location = (0 + st[0], 18 + k * 18 + st[1])
+                    textsize = cv2.getTextSize(text, self.text_fontface,
+                                            self.text_fontscale,
+                                            self.text_thickness)[0]
+                    textwidth = textsize[0]
+                    diag0 = (location[0] + textwidth, location[1] - 14)
+                    diag1 = (location[0], location[1] + 2)
+                    cv2.rectangle(frame, diag0, diag1, self.plate[k + 1], -1)
+                    cv2.putText(frame, text, location, self.text_fontface,
+                                self.text_fontscale, self.text_fontcolor,
+                                self.text_thickness, self.text_linetype)
+            results.append(frame)
+
+        return results
+
     def inference(self, frames: List[np.ndarray], human_detections):
         """
         actionの推論を行う関数
@@ -689,7 +720,8 @@ class MmActionDetector():
         """
 
         for i in range(len(human_detections)):
-            det = human_detections[i].tolist()
+            print(human_detections[i][0])
+            det = human_detections[i][0].tolist()
             det = np.array([det]).astype(np.float32)
             det[:, 0:4:2] *= self.w_ratio
             det[:, 1:4:2] *= self.h_ratio
@@ -722,9 +754,15 @@ class MmActionDetector():
                     prediction[j].append((self.label_map[i], scores[j, i].item()))
         print(prediction)
 
-        result_img = self.draw_one_image(frame=frames[-1], bboxes=det, preds=prediction)
-        pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
-        self.result_pub.publish(pub_img_msg)
+        # result_img = self.draw_one_image(frame=frames[-1], bboxes=det, preds=prediction)
+        # pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
+        # self.result_pub.publish(pub_img_msg)
+
+        result_imgs = self.draw_all_images(frames=frames, bboxes=det, preds=prediction)
+        for result_img in result_imgs:
+            pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
+            self.result_pub.publish(pub_img_msg)
+            rospy.sleep(1 / self.img_topic_hz)
 
     def run(self, msg: Image):
         """
@@ -737,7 +775,7 @@ class MmActionDetector():
         human_detection_result = self.human_detection_inference(image)
         # 推論結果などを配列に保存
         try:
-            self.human_detections.append(human_detection_result[0])
+            self.human_detections.append(human_detection_result)
             self.original_frames.append(image)
 
             # 一定フレーム分の認識結果がたまったときに実行
