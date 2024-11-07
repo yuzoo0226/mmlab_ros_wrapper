@@ -5,17 +5,16 @@ import os
 import cv2
 import mmcv
 import time
-import copy
 import rclpy
 
 import torch
-import logging
 import mmengine
 import threading
 import numpy as np
 import onnxruntime
 from typing import List
 from abc import ABCMeta, abstractmethod
+from rclpy.executors import MultiThreadedExecutor
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -33,9 +32,6 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from rclpy.qos import qos_profile_sensor_data, QoSProfile
 from rclpy.node import Node
-
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
 
 
 class MmActionDetector(Node):
@@ -142,8 +138,11 @@ class MmActionDetector(Node):
 
         self._rgb_msg = None
         self._depth_msg = None
-        self._rgb_sub = self.create_subscription(Image, "/camera/color/image_raw", self.run, custom_qos_profile)
+        self.cv_img = None
+        self._rgb_sub = self.create_subscription(Image, "/camera/color/image_raw", self.rgb_callback, custom_qos_profile)
         self._pub_result_img = self.create_publisher(Image, "~/result_image", qos_profile_sensor_data)
+
+        self.timer = self.create_timer(0.05, self.run)
 
         # プログラムに必要な変数
         self.original_frames = []
@@ -160,9 +159,8 @@ class MmActionDetector(Node):
         self.plate = [self.hex2color(h) for h in plate]
 
     def rgb_callback(self, msg: Image):
-        cv_img = self.bridge.imgmsg_to_cv2(msg)
-        cv2.imshow("test", cv_img)
-        cv2.waitKey(1)
+        self.get_logger().debug("get rgb image")
+        self.cv_img = self.bridge.imgmsg_to_cv2(msg)
 
     def hex2color(self, h):
         """Convert the 6-digit hex string to tuple of 3 int value (RGB)"""
@@ -321,26 +319,25 @@ class MmActionDetector(Node):
                     prediction[j].append((self.label_map[i], scores[j, i].item()))
         print(prediction)
 
-        # result_img = self.draw_one_image(frame=frames[-1], bboxes=det, preds=prediction)
-        # pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
-        # self.result_pub.publish(pub_img_msg)
-
         result_imgs = self.draw_all_images(frames=frames, bboxes=det, preds=prediction)
-        for result_img in result_imgs:
-            pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
-            self._pub_result_img.publish(pub_img_msg)
-            time.sleep(1 / self.img_topic_hz)
+        result_img = result_imgs[-1]
+        # for result_img in result_imgs:
+        pub_img_msg = self.bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
+        self._pub_result_img.publish(pub_img_msg)
+        # time.sleep(1 / self.img_topic_hz)
 
-    def run(self, msg: Image):
+    def run(self):
         """
-        imgトピックを受信したときのコールバック関数
-        msg(Image): 推論対象とする image msg
+        timerコールバック関数
         """
-        self.get_logger().info("get rgb image")
-        image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
         # 各画像に対してhuman_detectionを行う
+        if self.cv_img is not None:
+            image = self.cv_img
+        else:
+            return
+
         human_detection_result = self.human_detection_inference(image)
-        print(human_detection_result)
+
         # 推論結果などを配列に保存
         try:
             self.human_detections.append(human_detection_result)
@@ -358,13 +355,20 @@ class MmActionDetector(Node):
                 self.human_detections = []
 
         except IndexError as e:
+            self.original_frames = []
+            self.human_detections = []
             self.get_logger().warn(f"{e}")
+
+        self.cv_img = None
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = MmActionDetector()
-    rclpy.spin(node)
+    # rclpy.spin(node)
+    executor = MultiThreadedExecutor(num_threads=1)
+    executor.add_node(node)
+    executor.spin()
     node.destroy_node()
     rclpy.shutdown()
 
