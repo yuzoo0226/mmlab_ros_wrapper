@@ -18,6 +18,7 @@ setup(
         (os.path.join('share', package_name, 'config/mmaction/detection/recognition/tsn/ort/'), glob.glob('config/mmaction/recognition/tsn/ort/*.json')),
         (os.path.join('share', package_name, 'config/mmaction/detection/recognition/videomae/ort'), glob.glob('config/mmaction/recognition//videomae/ort/*.json')),
         (os.path.join('share', package_name, 'config/mmdetection/faster_rcnn/'), glob.glob('config/mmdetection/faster_rcnn/*.py')),
+        (os.path.join('share', package_name, 'config/mmpose/seresnet/'), glob.glob('config/mmpose/seresnet/*.py')),
         (os.path.join('share', package_name, 'config/ckpt/'), glob.glob('config/ckpt/*.pth')),
         (os.path.join('share', package_name, 'config/ckpt/'), glob.glob('config/ckpt/*.onnx')),
 
