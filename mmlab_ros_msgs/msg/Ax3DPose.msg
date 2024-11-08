@@ -1,0 +1,17 @@
+AxKeyPoint nose
+AxKeyPoint left_eye
+AxKeyPoint right_eye
+AxKeyPoint left_ear
+AxKeyPoint right_ear
+AxKeyPoint left_shoulder
+AxKeyPoint right_shoulder
+AxKeyPoint left_elbow
+AxKeyPoint right_elbow
+AxKeyPoint left_wrist
+AxKeyPoint right_wrist
+AxKeyPoint left_hip
+AxKeyPoint right_hip
+AxKeyPoint left_knee
+AxKeyPoint right_knee
+AxKeyPoint left_ankle
+AxKeyPoint right_ankle
