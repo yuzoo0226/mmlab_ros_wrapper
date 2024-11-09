@@ -234,7 +234,8 @@ class MmActionDetector(Node):
 
         self._pub_result_action_img = self.create_publisher(Image, "~/image/action", qos_profile_sensor_data)
         self._pub_result_pose_img = self.create_publisher(Image, "~/image/pose", qos_profile_sensor_data)
-        self._pub_result_pose_marker = self.create_publisher(MarkerArray, "~/result_skeleton", qos_profile_sensor_data)
+        self._pub_result_pose_marker = self.create_publisher(MarkerArray, "~/result_skeleton/marker_array", qos_profile_sensor_data)
+        self._pub_ax_3d_poses = self.create_publisher(Ax3DPoseWithLabelArray, "~/people_poses", qos_profile_sensor_data)
 
         self.timer = self.create_timer(0.03, self.pose_estimation_callback)
         self.use_action_recognition = False
@@ -645,9 +646,20 @@ class MmActionDetector(Node):
 
         human_detection_result = self.human_detection_inference(image)
         pose_results = inference_topdown(self.pose_estimator, image, human_detection_result)
-        skeleton_marker_array, people_keypoints_3d = self.create_pose_marker_array(pose_results=pose_results, depth_img=depth)
+        ax_3d_pose_array, people_keypoints_3d = self.create_pose_marker_array(pose_results=pose_results, depth_img=depth)
+        # 可視化用のマーカを配信
         marker_array = self.display3DPose(people_keypoints_3d, self.camera_tf_frame)
         self._pub_result_pose_marker.publish(marker_array)
+
+        # pose messagesを送信
+        ax_3d_pose_msg_array = Ax3DPoseWithLabelArray()
+        for ax_3d_pose in ax_3d_pose_array:
+            ax_3d_pose_msg = Ax3DPoseWithLabel()
+            ax_3d_pose_msg.keypoints = ax_3d_pose
+            ax_3d_pose_msg_array.people.append(ax_3d_pose_msg)
+
+        self._pub_ax_3d_poses.publish(ax_3d_pose_msg_array)
+
         data_samples = merge_data_samples(pose_results)
         self._pose_visualizer(image, data_samples)
         pose_estimator_result_cv = self.visualizer.get_image()
