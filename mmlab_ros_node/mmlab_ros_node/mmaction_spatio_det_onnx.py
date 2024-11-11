@@ -225,12 +225,19 @@ class MmActionDetector(Node):
         self.cv_img = None
         self.cv_depth = None
 
-        # camera modelの初期化
-        self.camera_tf_frame = "camera_link"
+        # camera modelの初期化(for orbbec)
+        # self.camera_tf_frame = "camera_link"
+        # self.camera_model = PinholeCameraModel()
+        # self._camera_info_sub = self.create_subscription(CameraInfo, "/camera/color/camera_info", self.camera_info_callback, custom_qos_profile)
+        # self._rgb_sub = self.create_subscription(Image, "/camera/color/image_raw", self.rgb_callback, custom_qos_profile)
+        # self._depth_sub = self.create_subscription(Image, "/camera/depth/image_raw", self.depth_callback, custom_qos_profile)
+
+        # camera modelの初期化(for HSRB)
+        self.camera_tf_frame = "head_rgbd_sensor_link"
         self.camera_model = PinholeCameraModel()
-        self._camera_info_sub = self.create_subscription(CameraInfo, "/camera/color/camera_info", self.camera_info_callback, custom_qos_profile)
-        self._rgb_sub = self.create_subscription(Image, "/camera/color/image_raw", self.rgb_callback, custom_qos_profile)
-        self._depth_sub = self.create_subscription(Image, "/camera/depth/image_raw", self.depth_callback, custom_qos_profile)
+        self._camera_info_sub = self.create_subscription(CameraInfo, "/head_rgbd_sensor/rgb/camera_info", self.camera_info_callback, custom_qos_profile)
+        self._rgb_sub = self.create_subscription(Image, "/head_rgbd_sensor/rgb/image_rect_color", self.rgb_callback, custom_qos_profile)
+        self._depth_sub = self.create_subscription(Image, "/head_rgbd_sensor/depth_registered/image_rect_raw", self.depth_callback, custom_qos_profile)
 
         self._pub_result_action_img = self.create_publisher(Image, "~/image/action", qos_profile_sensor_data)
         self._pub_result_pose_img = self.create_publisher(Image, "~/image/pose", qos_profile_sensor_data)
