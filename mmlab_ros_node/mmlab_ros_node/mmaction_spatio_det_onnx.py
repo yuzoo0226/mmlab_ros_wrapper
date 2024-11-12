@@ -36,9 +36,12 @@ from rclpy.node import Node
 # from mmpose.apis import inference_top_down_pose_model, init_pose_model, vis_pose_result
 from mmpose.apis import init_model as init_pose_estimator
 from mmpose.apis import inference_topdown
-# from mmpose.apis import vis_pose_result
 from mmpose.registry import VISUALIZERS
 from mmpose.structures import merge_data_samples, split_instances
+
+# mmtracking
+from mmtrack.apis import init_model as init_mot_model
+from mmtrack.apis import inference_mot
 
 from visualization_msgs.msg import Marker, MarkerArray
 from mmlab_ros_msgs.msg import Ax3DPose, AxKeyPoint, Ax3DPoseWithLabel, Ax3DPoseWithLabelArray
@@ -201,16 +204,16 @@ class MmActionDetector(Node):
             to_rgb=False
         )
 
-        # config.merge_from_dict(args.cfg_options)
-        # val_pipeline = config.val_pipeline
-
-        # sampler = [x for x in val_pipeline if get_str_type(x['type']) == 'SampleAVAFrames'][0]
-        # clip_len, frame_interval = sampler['clip_len'], sampler['frame_interval']
-        # window_size = clip_len * frame_interval
-        # assert clip_len % 2 == 0, 'We would like to have an even clip_len'
-        # # Note that it's 1 based here
-        # timestamps = np.arange(window_size // 2, num_frame + 1 - window_size // 2,
-        #                     args.predict_stepsize)
+        # Tracking
+        self.is_tracking = True
+        HUMAN_ID = 0
+        self.frame_num = 0
+        self.tracking_thr = 0.90
+        tracking_config_path = "config/mmtracking/reid/resnet50_b32x8_MOT20.py"
+        tracking_pth_path = "config/ckpt/**.pth"
+        self.tracking_config_path = os.path.join(self.package_dir, tracking_config_path)
+        self.tracking_pth_path = os.path.join(self.package_dir, tracking_pth_path)
+        self.tracking_model = init_mot_model(self.tracking_config_path, self.tracking_pth_path, device=self.device)
 
         ############################################
         # ros interface
@@ -234,6 +237,7 @@ class MmActionDetector(Node):
 
         self._pub_result_action_img = self.create_publisher(Image, "~/image/action", qos_profile_sensor_data)
         self._pub_result_pose_img = self.create_publisher(Image, "~/image/pose", qos_profile_sensor_data)
+        self._pub_result_tracking_img = self.create_publisher(Image, "~/image/tracking", qos_profile_sensor_data)
         self._pub_result_pose_marker = self.create_publisher(MarkerArray, "~/result_skeleton/marker_array", qos_profile_sensor_data)
         self._pub_ax_3d_poses = self.create_publisher(Ax3DPoseWithLabelArray, "~/people_poses", qos_profile_sensor_data)
 
@@ -644,7 +648,42 @@ class MmActionDetector(Node):
         else:
             return
 
-        human_detection_result = self.human_detection_inference(image)
+        if self.is_tracking:
+            # トラッキング
+            self.tracking_result = inference_mot(self.tracking_model, image, frame_id=self.frame_num)
+            self.frame_num += 1
+
+            # あとで扱いやすい形に整形 + 結果を描画
+            tracking_img = self.cv_img.copy()
+            human_detection_result = []
+            tracking_id_list = []
+
+            # 人間だけをトラッキングする
+            for track_bbox in self.tracking_result["track_bboxes"][HUMAN_ID]:
+                np_track_bbox = np.array((track_bbox[1], track_bbox[2], track_bbox[3], track_bbox[4], track_bbox[5]))
+                tracking_id_list.append(int(track_bbox[0]))
+                human_detection_result.append(np_track_bbox)
+                org1 = (int(track_bbox[1]), int(track_bbox[2]))
+                org2 = (int(track_bbox[3]), int(track_bbox[4]))
+                cv2.rectangle(tracking_img, org1, org2, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_4)
+                cv2.putText(tracking_img, str(int(track_bbox[0])), org=org1, fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.0, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_4)
+
+            # トラッキングの結果をpublish
+            tracking_img_msg = self.bridge.cv2_to_imgmsg(tracking_img, encoding="rgb8")
+            self._pub_result_tracking_img.publish(tracking_img_msg)
+
+            # float型のnp.arrayになおし，フレームのカウント数を増やす
+            human_detection_result = np.array(human_detection_result).astype(np.float32)
+            # フレーム数のカウントを増やす
+            self.frame_num += 1
+
+            if self.frame_num > 100000:
+                # フレーム数が一定上になったらリセットする
+                self.frame_num = 0
+
+        else:
+            human_detection_result = self.human_detection_inference(image)
+
         pose_results = inference_topdown(self.pose_estimator, image, human_detection_result)
         ax_3d_pose_array, people_keypoints_3d = self.create_pose_marker_array(pose_results=pose_results, depth_img=depth)
         # 可視化用のマーカを配信
