@@ -4,3 +4,6 @@
 [submodule "include/mmdeploy"]
 	path = include/mmdeploy
 	url = https://github.com/open-mmlab/mmdeploy.git
+[submodule "include/mmtracking"]
+	path = include/mmtracking
+	url = https://github.com/open-mmlab/mmtracking.git

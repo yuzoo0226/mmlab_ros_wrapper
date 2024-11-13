@@ -233,7 +233,7 @@ class MmActionDetector(Node):
         # self._depth_sub = self.create_subscription(Image, "/camera/depth/image_raw", self.depth_callback, custom_qos_profile)
 
         # camera modelの初期化(for HSRB)
-        self.camera_tf_frame = "head_rgbd_sensor_link"
+        self.camera_tf_frame = "head_rgbd_sensor_rgb_frame"
         self.camera_model = PinholeCameraModel()
         self._camera_info_sub = self.create_subscription(CameraInfo, "/head_rgbd_sensor/rgb/camera_info", self.camera_info_callback, custom_qos_profile)
         self._rgb_sub = self.create_subscription(Image, "/head_rgbd_sensor/rgb/image_rect_color", self.rgb_callback, custom_qos_profile)
