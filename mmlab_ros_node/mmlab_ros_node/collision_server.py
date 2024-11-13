@@ -13,6 +13,7 @@ from shape_msgs.msg import SolidPrimitive
 from mmlab_ros_msgs.msg import Ax3DPose, AxKeyPoint, Ax3DPoseWithLabel, Ax3DPoseWithLabelArray
 from coordinate_transform_util_ros.transform import TransformUtils
 from rclpy.qos import qos_profile_sensor_data, QoSProfile
+from std_srvs.srv import SetBool, Trigger
 
 
 class MMPoseCollisionRegister(Node):
@@ -28,11 +29,14 @@ class MMPoseCollisionRegister(Node):
         # ros interface
         self._sub_ax_3d_poses = self.create_subscription(Ax3DPoseWithLabelArray, "/mmaction_node/people_poses", self.rgb_callback, custom_qos_profile)
         self._pub_collision_object = self.create_publisher(CollisionObject, "/collision_environment_server/collision_object", qos_profile_sensor_data)
+
         self.unregister_human_bbox_srv = self.create_service(Trigger, '~/unregister_human_collisions', self.unregister_human_bbox)
+        self.bool_srv = self.create_service(SetBool, '~/run_enable', self.set_bool_callback)
 
         # timer callback
         self.pose_box_timer = self.create_timer(0.1, self.register_human_boxes)
 
+        self.run_enable = True
         self.score_th = 0.6
         self.current_human_poses = []
         self.object_id = "mm_human_poses"
@@ -61,6 +65,12 @@ class MMPoseCollisionRegister(Node):
             self.get_logger().warn("[failed] Cannot unregist human bboxes")
             return False
 
+    def set_bool_callback(self, request, response):
+        """run enableを制御
+        """
+        self.run_enable = request.data
+        self.get_logger().info(f"mmpose_collision_server run_enable is: {self.run_enable}")
+
     def cb_unregister_human_boxes(self, request, response):
         # サービスリクエストを処理する部分
         status = self.unregister_human_bbox()
@@ -75,6 +85,9 @@ class MMPoseCollisionRegister(Node):
         """
         人の3次元BBoxを障害物として配信
         """
+        if self.run_enable is False:
+            return
+
         data = self.current_human_poses
 
         if data != []:
