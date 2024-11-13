@@ -32,6 +32,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            "collision_server = mmlab_ros_node.collision_server:main",
             "mmaction_spation_det = mmlab_ros_node.mmaction_spatio_det_onnx:main",
         ],
     },
