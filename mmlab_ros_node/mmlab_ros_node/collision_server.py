@@ -17,7 +17,7 @@ from rclpy.qos import qos_profile_sensor_data, QoSProfile
 
 class MMPoseCollisionRegister(Node):
     def __init__(self) -> None:
-        super().__init__("mmaction_node")
+        super().__init__("mmpose_collision_register")
         self.package_dir = get_package_share_directory("mmlab_ros_node")
         self.get_logger().info(f"your shared package dir is: {self.package_dir}")
         self._transform_utils = TransformUtils.get_instance(self)
@@ -28,6 +28,9 @@ class MMPoseCollisionRegister(Node):
         # ros interface
         self._sub_ax_3d_poses = self.create_subscription(Ax3DPoseWithLabelArray, "/mmaction_node/people_poses", self.rgb_callback, custom_qos_profile)
         self._pub_collision_object = self.create_publisher(CollisionObject, "/collision_environment_server/collision_object", qos_profile_sensor_data)
+        self.unregister_human_bbox_srv = self.create_service(Trigger, '~/unregister_human_collisions', self.unregister_human_bbox)
+
+        # timer callback
         self.pose_box_timer = self.create_timer(0.1, self.register_human_boxes)
 
         self.score_th = 0.6
@@ -42,6 +45,32 @@ class MMPoseCollisionRegister(Node):
         self.current_human_poses = msg.people
         self.get_logger().info("callback human poses")
 
+    def unregister_human_bbox(self) -> bool:
+        try:
+            unregist_collision_human_msg = CollisionObject()
+            unregist_collision_human_msg.header = Header()
+            unregist_collision_human_msg.header.frame_id = self.target_frame
+            unregist_collision_human_msg.operation = CollisionObject.REMOVE
+            unregist_collision_human_msg.id = self.object_id
+            self.get_logger().info("unregist human bboxes successfully")
+            self._pub_collision_object.publish(unregist_collision_human_msg)
+            return True
+
+        except Exception as e:
+            self.get_logger().warn(f"{e}")
+            self.get_logger().warn("[failed] Cannot unregist human bboxes")
+            return False
+
+    def cb_unregister_human_boxes(self, request, response):
+        # サービスリクエストを処理する部分
+        status = self.unregister_human_bbox()
+        response.success = status
+        if status:
+            response.message = "unregist human bboxes successfully"
+        else:
+            response.message = "Cannot unregist human bboxes"
+        return response
+
     def register_human_boxes(self) -> None:
         """
         人の3次元BBoxを障害物として配信
@@ -50,6 +79,7 @@ class MMPoseCollisionRegister(Node):
 
         if data != []:
             # TODO 削除のメッセージも投げる
+            status = self.unregister_human_bbox()
 
             collision_human_msg = CollisionObject()
             collision_human_msg.header = Header()
