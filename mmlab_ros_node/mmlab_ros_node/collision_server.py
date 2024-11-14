@@ -7,12 +7,17 @@ import mmcv
 import time
 import rclpy
 import copy
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data, QoSProfile
+from ament_index_python.packages import get_package_share_directory
+from coordinate_transform_util_ros.transform import TransformUtils
+from rclpy.executors import MultiThreadedExecutor
 
 from moveit_msgs.msg import CollisionObject
 from shape_msgs.msg import SolidPrimitive
+from geometry_msgs.msg import Pose, Point, Quaternion
 from mmlab_ros_msgs.msg import Ax3DPose, AxKeyPoint, Ax3DPoseWithLabel, Ax3DPoseWithLabelArray
-from coordinate_transform_util_ros.transform import TransformUtils
-from rclpy.qos import qos_profile_sensor_data, QoSProfile
+from std_msgs.msg import Header
 from std_srvs.srv import SetBool, Trigger
 
 
@@ -27,8 +32,8 @@ class MMPoseCollisionRegister(Node):
         self.target_frame = "map"
 
         # ros interface
-        self._sub_ax_3d_poses = self.create_subscription(Ax3DPoseWithLabelArray, "/mmaction_node/people_poses", self.rgb_callback, custom_qos_profile)
-        self._pub_collision_object = self.create_publisher(CollisionObject, "/collision_environment_server/collision_object", qos_profile_sensor_data)
+        self._sub_ax_3d_poses = self.create_subscription(Ax3DPoseWithLabelArray, "/mmaction_node/people_poses", self.human_pose_callback, qos_profile_sensor_data)
+        self._pub_collision_object = self.create_publisher(CollisionObject, "/collision_environment_server/collision_object", 10)
 
         self.unregister_human_bbox_srv = self.create_service(Trigger, '~/unregister_human_collisions', self.unregister_human_bbox)
         self.bool_srv = self.create_service(SetBool, '~/run_enable', self.set_bool_callback)
@@ -47,7 +52,7 @@ class MMPoseCollisionRegister(Node):
     def human_pose_callback(self, msg: Ax3DPoseWithLabelArray) -> None:
         self.current_timestamp = msg.header.stamp
         self.current_human_poses = msg.people
-        self.get_logger().info("callback human poses")
+        self.get_logger().debug("callback human poses")
 
     def unregister_human_bbox(self) -> bool:
         try:
@@ -91,9 +96,6 @@ class MMPoseCollisionRegister(Node):
         data = self.current_human_poses
 
         if data != []:
-            # TODO 削除のメッセージも投げる
-            status = self.unregister_human_bbox()
-
             collision_human_msg = CollisionObject()
             collision_human_msg.header = Header()
             collision_human_msg.header.frame_id = self.target_frame
@@ -105,7 +107,7 @@ class MMPoseCollisionRegister(Node):
             primitives_shapes = []
 
             for human_pose in data:
-                check_points = ["nose", "left_eye", "right_eye", "left_ear", "right_ear", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle" "right_ankle"]
+                check_points = ["nose", "left_eye", "right_eye", "left_ear", "right_ear", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle"]
                 temp_human_points_x = []
                 temp_human_points_y = []
                 temp_human_points_z = []
@@ -127,24 +129,26 @@ class MMPoseCollisionRegister(Node):
                         temp_human_pose_map = self._transform_utils.transform_pose(camera_to_map, temp_human_pose)
 
                         # point を使って処理を行う
-                        self.get_logger().info(f"{point_name} position via {self.target_frame}: {temp_human_pose_map.position}")
+                        self.get_logger().debug(f"{point_name} position via {self.target_frame}: {temp_human_pose_map.position}")
                         temp_human_points_x.append(temp_human_pose_map.position.x)
                         temp_human_points_y.append(temp_human_pose_map.position.y)
                         temp_human_points_z.append(temp_human_pose_map.position.z)
-                
+
+                # TODO(yano) サイズのバリデーションを入れる
+
                 # 各座標の最大値と最小値を計算
                 if temp_human_points_x and temp_human_points_y and temp_human_points_z:
                     max_x = max(temp_human_points_x)
                     min_x = min(temp_human_points_x)
-                    self.get_logger().info(f"Max X: {max_x}, Min X: {min_x}")                
+                    self.get_logger().debug(f"Max X: {max_x}, Min X: {min_x}")
 
                     max_y = max(temp_human_points_y)
                     min_y = min(temp_human_points_y)
-                    self.get_logger().info(f"Max Y: {max_y}, Min Y: {min_y}")
+                    self.get_logger().debug(f"Max Y: {max_y}, Min Y: {min_y}")
 
                     max_z = max(temp_human_points_z)
                     min_z = min(temp_human_points_z)
-                    self.get_logger().info(f"Max Z: {max_z}, Min Z: {min_z}")
+                    self.get_logger().debug(f"Max Z: {max_z}, Min Z: {min_z}")
 
                     pose = Pose()
                     pose.position.x = float((max_x + min_x) / 2.0)
@@ -165,8 +169,8 @@ class MMPoseCollisionRegister(Node):
 
             collision_human_msg.primitives = primitives_shapes
             collision_human_msg.primitive_poses = primitives_poses
-        
-        self._pub_collision_object.publish(collision_human_msg)
+
+            self._pub_collision_object.publish(collision_human_msg)
 
 
 def main(args=None):
