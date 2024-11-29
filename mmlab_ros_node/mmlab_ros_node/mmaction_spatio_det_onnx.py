@@ -660,10 +660,23 @@ class MmActionDetector(Node):
 
         # pose messagesを送信
         ax_3d_pose_msg_array = Ax3DPoseWithLabelArray()
-        for ax_3d_pose in ax_3d_pose_array:
+        for idx, ax_3d_pose in enumerate(ax_3d_pose_array):
             ax_3d_pose_msg = Ax3DPoseWithLabel()
             ax_3d_pose_msg.keypoints = ax_3d_pose
             ax_3d_pose_msg_array.people.append(ax_3d_pose_msg)
+
+            try:
+                bbox = human_detection_result[idx]
+                ax_3d_pose_msg.x = int(bbox[0])
+                ax_3d_pose_msg.y = int(bbox[1])
+                ax_3d_pose_msg.w = int(bbox[2]) - int(bbox[0])
+                ax_3d_pose_msg.h = int(bbox[3]) - int(bbox[1])
+            except IndexError as e:
+                self.get_logger().warning(f"Human undetected!! {e}")
+
+        # imageを追加
+        ax_3d_pose_msg_array.rgb = self.bridge.cv2_to_imgmsg(image, encoding="rgb8")
+        # ax_3d_pose_msg_array.depth = self.bridge.cv2_to_imgmsg(image, encoding="rgb8")  # TODO(yano) Depthも送る
 
         self._pub_ax_3d_poses.publish(ax_3d_pose_msg_array)
 

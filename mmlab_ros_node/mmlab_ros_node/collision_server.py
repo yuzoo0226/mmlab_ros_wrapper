@@ -49,6 +49,8 @@ class MMPoseCollisionRegister(Node):
         self.msg_add = 0
         self.msg_remove = 1
 
+        self.limit_size = [1.0, 1.0, 2.4]
+
     def human_pose_callback(self, msg: Ax3DPoseWithLabelArray) -> None:
         self.current_timestamp = msg.header.stamp
         self.current_human_poses = msg.people
@@ -134,8 +136,6 @@ class MMPoseCollisionRegister(Node):
                         temp_human_points_y.append(temp_human_pose_map.position.y)
                         temp_human_points_z.append(temp_human_pose_map.position.z)
 
-                # TODO(yano) サイズのバリデーションを入れる
-
                 # 各座標の最大値と最小値を計算
                 if temp_human_points_x and temp_human_points_y and temp_human_points_z:
                     max_x = max(temp_human_points_x)
@@ -159,6 +159,16 @@ class MMPoseCollisionRegister(Node):
                     size_x = float(abs(max_x - min_x))
                     size_y = float(abs(max_y - min_y))
                     size_z = float(abs(max_z - min_z))
+
+                    # TODO(yano) サイズのバリデーションをもう少し賢くする（どのキーポイントが取れているかなど？）
+                    if size_x > self.limit_size[0]:
+                        size_x = self.limit_size[0]
+
+                    if size_y > self.limit_size[1]:
+                        size_y = self.limit_size[1]
+
+                    if size_z > self.limit_size[2]:
+                        size_z = self.limit_size[2]
 
                     shape = SolidPrimitive()
                     shape.type = SolidPrimitive.BOX
