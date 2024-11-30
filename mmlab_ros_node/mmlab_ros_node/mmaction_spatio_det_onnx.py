@@ -29,7 +29,8 @@ from mmengine.structures import InstanceData
 from mmaction.structures import ActionDataSample
 
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image, CameraInfo
+from cv_bridge_util.cv_bridge import CvBridgeUtils
+from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 from std_msgs.msg import Header
 from rclpy.qos import qos_profile_sensor_data, QoSProfile
 from rclpy.node import Node
@@ -216,6 +217,7 @@ class MmActionDetector(Node):
         # ros interface
         ############################################
         self.bridge = CvBridge()
+        self._bridge = CvBridgeUtils(self)
         # self.img_topic_name = "/camera/rgb/image_raw"
 
         custom_qos_profile = QoSProfile(depth=1, reliability=qos_profile_sensor_data.reliability, durability=qos_profile_sensor_data.durability, history=qos_profile_sensor_data.history)
@@ -236,8 +238,8 @@ class MmActionDetector(Node):
         self.camera_tf_frame = "head_rgbd_sensor_rgb_frame"
         self.camera_model = PinholeCameraModel()
         self._camera_info_sub = self.create_subscription(CameraInfo, "/head_rgbd_sensor/rgb/camera_info", self.camera_info_callback, custom_qos_profile)
-        self._rgb_sub = self.create_subscription(Image, "/head_rgbd_sensor/rgb/image_rect_color", self.rgb_callback, custom_qos_profile)
-        self._depth_sub = self.create_subscription(Image, "/head_rgbd_sensor/depth_registered/image_rect_raw", self.depth_callback, custom_qos_profile)
+        self._rgb_sub = self.create_subscription(CompressedImage, "/head_rgbd_sensor/rgb/image_rect_color/compressed", self.rgb_callback, custom_qos_profile)
+        self._depth_sub = self.create_subscription(CompressedImage, "head_rgbd_sensor/depth_registered/image_rect_raw/compressedDepth", self.depth_callback, custom_qos_profile)
 
         self._pub_result_action_img = self.create_publisher(Image, "~/image/action", qos_profile_sensor_data)
         self._pub_result_pose_img = self.create_publisher(Image, "~/image/pose", qos_profile_sensor_data)
@@ -268,11 +270,11 @@ class MmActionDetector(Node):
 
     def rgb_callback(self, msg: Image):
         self.get_logger().debug("get rgb image")
-        self.cv_img = self.bridge.imgmsg_to_cv2(msg)
+        self.cv_img = self._bridge.compressed_imgmsg_to_cv2(msg)
 
     def depth_callback(self, msg: Image):
         self.get_logger().debug("get depth image")
-        self.cv_depth = self.bridge.imgmsg_to_cv2(msg)
+        self.cv_depth = self._bridge.compressed_imgmsg_to_depth(msg)
 
     def camera_info_callback(self, msg: CameraInfo):
         # CameraInfoメッセージからカメラモデルを設定
